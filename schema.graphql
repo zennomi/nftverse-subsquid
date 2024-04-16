@@ -1,10 +1,30 @@
 type ListEvent @entity {
   id: ID!
-  nft: String! @index
-  tokenId: BigInt! @index
+  collection: Collection! @index
+  token: Token! @index
   payToken: String!
   price: BigInt!
   seller: String!
   timestamp: DateTime!
   txHash: String!
+}
+
+type Collection @entity {
+  id: ID!
+  name: String!
+  symbol: String!
+}
+
+type Token @entity {
+  id: ID! # collection-tokenId
+  collection: Collection!
+  tokenId: BigInt!
+  uri: String
+  image: String
+  attributes: [Attribute!]
+}
+
+type Attribute {
+  traitType: String!
+  value: String!
 }

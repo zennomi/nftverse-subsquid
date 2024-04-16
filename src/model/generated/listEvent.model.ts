@@ -1,4 +1,6 @@
-import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_, Index as Index_, BigIntColumn as BigIntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
+import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, ManyToOne as ManyToOne_, Index as Index_, StringColumn as StringColumn_, BigIntColumn as BigIntColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
+import {Collection} from "./collection.model"
+import {Token} from "./token.model"
 
 @Entity_()
 export class ListEvent {
@@ -10,12 +12,12 @@ export class ListEvent {
     id!: string
 
     @Index_()
-    @StringColumn_({nullable: false})
-    nft!: string
+    @ManyToOne_(() => Collection, {nullable: true})
+    collection!: Collection
 
     @Index_()
-    @BigIntColumn_({nullable: false})
-    tokenId!: bigint
+    @ManyToOne_(() => Token, {nullable: true})
+    token!: Token
 
     @StringColumn_({nullable: false})
     payToken!: string
