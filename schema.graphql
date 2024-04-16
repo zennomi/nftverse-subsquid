@@ -1,7 +1,10 @@
-type Burn @entity {
+type ListEvent @entity {
   id: ID!
-  block: Int!
-  address: String! @index
-  value: BigInt!
+  nft: String! @index
+  tokenId: BigInt! @index
+  payToken: String!
+  price: BigInt!
+  seller: String!
+  timestamp: DateTime!
   txHash: String!
 }

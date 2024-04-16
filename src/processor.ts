@@ -1,4 +1,4 @@
-import {assertNotNull} from '@subsquid/util-internal'
+import { assertNotNull } from '@subsquid/util-internal'
 import {
     BlockHeader,
     DataHandlerContext,
@@ -11,7 +11,8 @@ import {
 export const processor = new EvmBatchProcessor()
     // Lookup archive by the network name in Subsquid registry
     // See https://docs.subsquid.io/evm-indexing/supported-networks/
-    .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
+    // https://cdn.subsquid.io/archives/evm.json
+    .setGateway('https://v2.archive.subsquid.io/network/ethereum-sepolia')
     // Chain RPC endpoint is required for
     //  - indexing unfinalized blocks https://docs.subsquid.io/basics/unfinalized-blocks/
     //  - querying the contract state https://docs.subsquid.io/evm-indexing/query-state/
@@ -23,18 +24,16 @@ export const processor = new EvmBatchProcessor()
         rateLimit: 10
     })
     .setFinalityConfirmation(75)
+    .addLog({
+        address: ["0xa90F533C85997fE085A1a70b409cA1e9b886cAF6"],
+        range: { from: 5708169 },
+        transaction: true
+    })
     .setFields({
-        transaction: {
-            from: true,
-            value: true,
-            hash: true,
+        log: {
+            data: true,
+            transactionHash: true
         },
-    })
-    .setBlockRange({
-        from: 0,
-    })
-    .addTransaction({
-        to: ['0x0000000000000000000000000000000000000000'],
     })
 
 export type Fields = EvmBatchProcessorFields<typeof processor>
