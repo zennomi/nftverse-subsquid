@@ -1,21 +1,5 @@
 [
     {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "_platformFee",
-                "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "_feeRecipient",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-    },
-    {
         "anonymous": false,
         "inputs": [
             {
@@ -64,6 +48,19 @@
             {
                 "indexed": true,
                 "internalType": "address",
+                "name": "tokenAddress",
+                "type": "address"
+            }
+        ],
+        "name": "AddPayableToken",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
                 "name": "nft",
                 "type": "address"
             },
@@ -99,6 +96,31 @@
             }
         ],
         "name": "BoughtNFT",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "nft",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "seller",
+                "type": "address"
+            }
+        ],
+        "name": "CanceledListedNFT",
         "type": "event"
     },
     {
@@ -191,6 +213,19 @@
             }
         ],
         "name": "CreatedAuction",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint8",
+                "name": "version",
+                "type": "uint8"
+            }
+        ],
+        "name": "Initialized",
         "type": "event"
     },
     {
@@ -474,6 +509,57 @@
     {
         "inputs": [
             {
+                "internalType": "address[]",
+                "name": "_nfts",
+                "type": "address[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "_tokenIds",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "_prices",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "buyNFTByETH",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "_nfts",
+                "type": "address[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "_tokenIds",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "address[]",
+                "name": "_payTokens",
+                "type": "address[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "_prices",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "buyNFTs",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "address",
                 "name": "_nft",
                 "type": "address"
@@ -484,7 +570,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "buyNFTByETH",
+        "name": "buyNFTsByETH",
         "outputs": [],
         "stateMutability": "payable",
         "type": "function"
@@ -704,6 +790,24 @@
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_platformFee",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "_feeRecipient",
+                "type": "address"
+            }
+        ],
+        "name": "initialize",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {

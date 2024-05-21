@@ -22,12 +22,13 @@ export const processor = new EvmBatchProcessor()
         // https://docs.subsquid.io/deploy-squid/env-variables/
         url: assertNotNull(process.env.RPC_ENDPOINT),
         // More RPC connection options at https://docs.subsquid.io/evm-indexing/configuration/initialization/#set-data-source
-        rateLimit: 10
+        rateLimit: 30,
+        // maxBatchCallSize: 5
     })
     .setFinalityConfirmation(75)
     .addLog({
-        address: ["0xa90F533C85997fE085A1a70b409cA1e9b886cAF6"],
-        range: { from: 5708169 },
+        address: ["0xD05bC5aBb2D1848372Fe94A7Ce8ddd6A1f2C50b8"],
+        range: { from: 5940503 },
         transaction: true
     })
     .setFields({

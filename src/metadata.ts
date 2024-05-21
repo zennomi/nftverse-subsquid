@@ -4,8 +4,9 @@ import axios from 'axios'
 
 import { Attribute } from './model'
 import { Context } from './processor'
+import { last } from 'lodash'
 
-export const IPFS_GATEWAY = 'https://ipfs.io/ipfs/'
+export const IPFS_GATEWAY = process.env.IPFS_GATEWAY || 'https://ipfs.io/ipfs/'
 
 export interface TokenMetadata {
     image: string
@@ -45,3 +46,31 @@ const client = axios.create({
         }
     },
 })
+
+const openseaClient = axios.create({
+    headers: {
+        Accept: "application/json",
+        "x-api-key": process.env.OPENSEA_KEY!,
+    },
+    baseURL: "https://testnets-api.opensea.io/api/v2/chain/sepolia/"
+})
+
+export async function fetchOpenseaTokenMetadata(collection: string, id: string): Promise<TokenMetadata | undefined> {
+    const { data }: {
+        data: {
+            image_url: string,
+            traits: {
+                trait_type: string,
+                display_type: number,
+                value: string
+            }[]
+        }
+    } = await openseaClient({
+        url: `/${collection}/nfts/${id}`,
+    })
+
+    const image = data.image_url.startsWith("https://ipfs.io/ipfs/") ? "ipfs://" + last(data.image_url.split("/")) : data.image_url
+    const attributes = data.traits.map((a) => new Attribute({ traitType: a.trait_type, value: a.value }))
+
+    return { image, attributes }
+}

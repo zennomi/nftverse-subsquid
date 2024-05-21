@@ -1,20 +1,5 @@
 export const ABI_JSON = [
     {
-        "type": "constructor",
-        "stateMutability": "undefined",
-        "payable": false,
-        "inputs": [
-            {
-                "type": "uint256",
-                "name": "_platformFee"
-            },
-            {
-                "type": "address",
-                "name": "_feeRecipient"
-            }
-        ]
-    },
-    {
         "type": "event",
         "anonymous": false,
         "name": "AcceptedNFT",
@@ -54,6 +39,18 @@ export const ABI_JSON = [
     {
         "type": "event",
         "anonymous": false,
+        "name": "AddPayableToken",
+        "inputs": [
+            {
+                "type": "address",
+                "name": "tokenAddress",
+                "indexed": true
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "anonymous": false,
         "name": "BoughtNFT",
         "inputs": [
             {
@@ -84,6 +81,28 @@ export const ABI_JSON = [
             {
                 "type": "address",
                 "name": "buyer",
+                "indexed": true
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "anonymous": false,
+        "name": "CanceledListedNFT",
+        "inputs": [
+            {
+                "type": "address",
+                "name": "nft",
+                "indexed": true
+            },
+            {
+                "type": "uint256",
+                "name": "tokenId",
+                "indexed": true
+            },
+            {
+                "type": "address",
+                "name": "seller",
                 "indexed": true
             }
         ]
@@ -164,6 +183,18 @@ export const ABI_JSON = [
                 "type": "address",
                 "name": "creator",
                 "indexed": true
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "anonymous": false,
+        "name": "Initialized",
+        "inputs": [
+            {
+                "type": "uint8",
+                "name": "version",
+                "indexed": false
             }
         ]
     },
@@ -423,6 +454,53 @@ export const ABI_JSON = [
         "payable": true,
         "inputs": [
             {
+                "type": "address[]",
+                "name": "_nfts"
+            },
+            {
+                "type": "uint256[]",
+                "name": "_tokenIds"
+            },
+            {
+                "type": "uint256[]",
+                "name": "_prices"
+            }
+        ],
+        "outputs": []
+    },
+    {
+        "type": "function",
+        "name": "buyNFTs",
+        "constant": false,
+        "payable": false,
+        "inputs": [
+            {
+                "type": "address[]",
+                "name": "_nfts"
+            },
+            {
+                "type": "uint256[]",
+                "name": "_tokenIds"
+            },
+            {
+                "type": "address[]",
+                "name": "_payTokens"
+            },
+            {
+                "type": "uint256[]",
+                "name": "_prices"
+            }
+        ],
+        "outputs": []
+    },
+    {
+        "type": "function",
+        "name": "buyNFTsByETH",
+        "constant": false,
+        "stateMutability": "payable",
+        "payable": true,
+        "inputs": [
+            {
                 "type": "address",
                 "name": "_nft"
             },
@@ -634,6 +712,23 @@ export const ABI_JSON = [
                 "name": ""
             }
         ]
+    },
+    {
+        "type": "function",
+        "name": "initialize",
+        "constant": false,
+        "payable": false,
+        "inputs": [
+            {
+                "type": "uint256",
+                "name": "_platformFee"
+            },
+            {
+                "type": "address",
+                "name": "_feeRecipient"
+            }
+        ],
+        "outputs": []
     },
     {
         "type": "function",

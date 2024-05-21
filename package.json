@@ -12,12 +12,15 @@
     "axios": "^1.6.8",
     "dotenv": "^16.4.5",
     "ethers": "^6.11.1",
+    "lodash": "^4.17.21",
     "pg": "^8.11.5",
+    "type-graphql": "^1.2.0-rc.1",
     "typeorm": "^0.3.20"
   },
   "devDependencies": {
     "@subsquid/evm-typegen": "^3.3.0",
     "@subsquid/typeorm-codegen": "^2.0.0",
+    "@types/lodash": "^4.17.4",
     "@types/node": "^20.12.7",
     "typescript": "~5.4.5"
   }

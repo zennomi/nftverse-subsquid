@@ -1,33 +1,58 @@
 import { TypeormDatabase } from '@subsquid/typeorm-store'
-import { Collection, ListEvent, Token } from './model'
+import { Collection, ListEvent, ListEventStatus, PaymentToken, Token } from './model'
 import { Context, processor } from './processor'
 import * as nftVerseMarketplace from "./abi/NFTVerseMarketplace"
+import * as erc20 from "./abi/ERC20"
 import * as erc721 from "./abi/ERC721"
 import { In } from 'typeorm'
-import { fetchTokenMetadata } from './metadata'
+import { fetchOpenseaTokenMetadata, fetchTokenMetadata } from './metadata'
 
 processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
-    const listEvents: ListEvent[] = []
+    const listEvents = new Map<string, ListEvent>()
     const collectionIds = new Set<string>()
     const tokenIds = new Set<string>()
 
     for (const block of ctx.blocks) {
         for (const log of block.logs) {
-            if (log.topics[0] === nftVerseMarketplace.events.ListedNFT.topic) {
+            if (log.topics[0] === nftVerseMarketplace.events.AddPayableToken.topic) {
+                const event = nftVerseMarketplace.events.AddPayableToken.decode(log)
+                const paymentToken = await fetchERC20Token(ctx, event.tokenAddress)
+                ctx.log.info(`New payment token: ${paymentToken.id}`)
+                await ctx.store.insert(paymentToken)
+            } else if (log.topics[0] === nftVerseMarketplace.events.ListedNFT.topic) {
                 const event = nftVerseMarketplace.events.ListedNFT.decode(log)
                 collectionIds.add(event.nft)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
                 tokenIds.add(tokenId)
-                listEvents.push(new ListEvent({
+                listEvents.set(tokenId, new ListEvent({
                     id: log.id,
-                    collection: new Collection({ id: event.nft }), // temp
+                    collection: new Collection({ id: event.nft }),
                     token: new Token({ id: tokenId }),
-                    payToken: event.payToken,
+                    payToken: new PaymentToken({ id: event.payToken }),
                     price: event.price,
                     seller: event.seller,
                     timestamp: new Date(block.header.timestamp),
-                    txHash: log.transactionHash
+                    txHash: log.transactionHash,
+                    status: ListEventStatus.LISTING,
                 }))
+            } else if (log.topics[0] === nftVerseMarketplace.events.BoughtNFT.topic) {
+                const event = nftVerseMarketplace.events.BoughtNFT.decode(log)
+                const tokenId = `${event.nft}-${event.tokenId.toString()}`
+                let listEvent = listEvents.get(tokenId)
+                if (!listEvent) {
+                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, }, order: { timestamp: -1 } })
+                }
+                listEvent.status = ListEventStatus.SOLD
+                listEvents.set(tokenId, listEvent)
+            } else if (log.topics[0] === nftVerseMarketplace.events.CanceledListedNFT.topic) {
+                const event = nftVerseMarketplace.events.CanceledListedNFT.decode(log)
+                const tokenId = `${event.nft}-${event.tokenId.toString()}`
+                let listEvent = listEvents.get(tokenId)
+                if (!listEvent) {
+                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
+                }
+                listEvent.status = ListEventStatus.CANCELED
+                listEvents.set(tokenId, listEvent)
             }
         }
     }
@@ -68,13 +93,8 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
 
     await ctx.store.insert([...insertTokens.values()])
     // list events
-    for (const event of listEvents) {
-        event.collection = collections.get(event.collection.id)!
-        event.token = tokens.get(event.token.id)!
-    }
-
     // upsert batches of entities with batch-optimized ctx.store.save
-    await ctx.store.upsert(listEvents)
+    await ctx.store.upsert([...listEvents.values()])
 })
 
 async function fetchCollection(ctx: Context, address: string) {
@@ -98,8 +118,36 @@ async function fetchToken(ctx: Context, address: string, tokenId: bigint) {
     let contract = new erc721.Contract(ctx, block, address)
 
     let uri = await contract.tokenURI(tokenId)
+    let metadata
+    try {
+        metadata = await fetchTokenMetadata(ctx, uri)
+    } catch (error) {
+    }
 
-    const metadata = await fetchTokenMetadata(ctx, uri)
+    if (!metadata) {
+        try {
+            metadata = await fetchOpenseaTokenMetadata(address, tokenId.toString())
+        } catch (error) {
+            ctx.log.warn(`Failed to fetch metadata at ${uri} with opensea API. Error ${error}`)
+        }
+    }
 
     return { uri, ...metadata }
+}
+
+async function fetchERC20Token(ctx: Context, address: string) {
+    let block = ctx.blocks[ctx.blocks.length - 1].header
+
+    let contract = new erc20.Contract(ctx, block, address)
+
+    let name = await contract.name()
+    let symbol = await contract.symbol()
+    let decimals = await contract.decimals()
+
+    return new PaymentToken({
+        id: address,
+        name,
+        symbol,
+        decimals,
+    })
 }
