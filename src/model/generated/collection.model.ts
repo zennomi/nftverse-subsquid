@@ -1,4 +1,5 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, StringColumn as StringColumn_} from "@subsquid/typeorm-store"
+import {CollectionCategory} from "./_collectionCategory"
 
 @Entity_()
 export class Collection {
@@ -14,4 +15,7 @@ export class Collection {
 
     @StringColumn_({nullable: false})
     symbol!: string
+
+    @Column_("varchar", {length: 10, nullable: true})
+    category!: CollectionCategory | undefined | null
 }

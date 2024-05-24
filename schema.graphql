@@ -1,5 +1,15 @@
 enum ListEventStatus {
-  LISTING, SOLD, CANCELED
+  LISTING
+  SOLD
+  CANCELED
+}
+
+enum CollectionCategory {
+  ART
+  FUTURISTIC
+  PFP_MODEL
+  GAMING
+  JAPAN
 }
 
 type ListEvent @entity {
@@ -18,6 +28,7 @@ type Collection @entity {
   id: ID!
   name: String!
   symbol: String!
+  category: CollectionCategory
 }
 
 type Token @entity {
