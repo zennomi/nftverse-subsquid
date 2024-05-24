@@ -20,6 +20,15 @@ export class Token {
     tokenId!: bigint
 
     @StringColumn_({nullable: true})
+    name!: string | undefined | null
+
+    @StringColumn_({nullable: true})
+    description!: string | undefined | null
+
+    @StringColumn_({nullable: true})
+    animation!: string | undefined | null
+
+    @StringColumn_({nullable: true})
     uri!: string | undefined | null
 
     @StringColumn_({nullable: true})

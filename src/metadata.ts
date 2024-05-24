@@ -9,7 +9,10 @@ import { last } from 'lodash'
 export const IPFS_GATEWAY = process.env.IPFS_GATEWAY || 'https://ipfs.io/ipfs/'
 
 export interface TokenMetadata {
-    image: string
+    name?: string
+    description?: string
+    image?: string
+    animation?: string
     attributes: Attribute[]
 }
 
@@ -39,10 +42,13 @@ const client = axios.create({
     headers: { 'Content-Type': 'application/json' },
     httpsAgent: new https.Agent({ keepAlive: true }),
     transformResponse(res: string): TokenMetadata {
-        let data: { image: string; attributes: { trait_type: string; value: string }[] } = JSON.parse(res)
+        let data: { name?: string, description?: string, image?: string, animation_url?: string, attributes?: { trait_type: string; value: string }[] } = JSON.parse(res)
         return {
+            name: data.name,
+            description: data.description,
             image: data.image,
-            attributes: data.attributes.map((a) => new Attribute({ traitType: a.trait_type, value: a.value })),
+            animation: data.animation_url,
+            attributes: data.attributes?.map((a) => new Attribute({ traitType: a.trait_type, value: a.value })) || [],
         }
     },
 })
@@ -58,7 +64,10 @@ const openseaClient = axios.create({
 export async function fetchOpenseaTokenMetadata(collection: string, id: string): Promise<TokenMetadata | undefined> {
     const { data }: {
         data: {
-            image_url: string,
+            name: string,
+            description: string,
+            image_url?: string,
+            animation_url?: string,
             traits: {
                 trait_type: string,
                 display_type: number,
@@ -69,8 +78,8 @@ export async function fetchOpenseaTokenMetadata(collection: string, id: string):
         url: `/${collection}/nfts/${id}`,
     })
 
-    const image = data.image_url.startsWith("https://ipfs.io/ipfs/") ? "ipfs://" + last(data.image_url.split("/")) : data.image_url
+    const image = data.image_url?.startsWith("https://ipfs.io/ipfs/") ? "ipfs://" + last(data.image_url.split("/")) : data.image_url
     const attributes = data.traits.map((a) => new Attribute({ traitType: a.trait_type, value: a.value }))
 
-    return { image, attributes }
+    return { ...data, image, attributes, }
 }

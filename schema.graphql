@@ -35,6 +35,9 @@ type Token @entity {
   id: ID! # collection-tokenId
   collection: Collection!
   tokenId: BigInt!
+  name: String
+  description: String
+  animation: String
   uri: String
   image: String
   attributes: [Attribute!]
