@@ -4,4 +4,5 @@ export enum CollectionCategory {
     PFP_MODEL = "PFP_MODEL",
     GAMING = "GAMING",
     JAPAN = "JAPAN",
+    CAR = "CAR",
 }

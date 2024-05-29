@@ -10,6 +10,7 @@ enum CollectionCategory {
   PFP_MODEL
   GAMING
   JAPAN
+  CAR
 }
 
 type ListEvent @entity {
