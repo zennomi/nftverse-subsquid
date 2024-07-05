@@ -2,11 +2,13 @@ import path from 'path'
 import https from 'https'
 import axios from 'axios'
 
-import { Attribute } from './model'
+import { Attribute, File } from './model'
 import { Context } from './processor'
 import { last } from 'lodash'
+import { assertNotNull } from '@subsquid/evm-processor'
 
 export const IPFS_GATEWAY = process.env.IPFS_GATEWAY || 'https://ipfs.io/ipfs/'
+export const PROXY_URL = assertNotNull(process.env.PROXY_URL)
 
 export interface TokenMetadata {
     name?: string
@@ -61,6 +63,14 @@ const openseaClient = axios.create({
     baseURL: "https://testnets-api.opensea.io/api/v2/chain/sepolia/"
 })
 
+const proxyClient = axios.create({
+    baseURL: PROXY_URL,
+    headers: {
+        Accept: "application/json",
+        'Content-Type': 'application/json'
+    }
+})
+
 export async function fetchOpenseaTokenMetadata(collection: string, id: string): Promise<TokenMetadata | undefined> {
     const { data }: {
         data: {
@@ -82,4 +92,15 @@ export async function fetchOpenseaTokenMetadata(collection: string, id: string):
     const attributes = data.traits.map((a) => new Attribute({ traitType: a.trait_type, value: a.value }))
 
     return { ...data, image, attributes, }
+}
+
+export async function proxyFile(url: string): Promise<File> {
+    const { data } = await proxyClient({
+        url: "/files",
+        method: "POST",
+        data: JSON.stringify({
+            url
+        }),
+    })
+    return new File({ mime: data.file.mime, path: data.file.path })
 }

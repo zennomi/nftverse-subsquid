@@ -2,6 +2,7 @@ import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, M
 import * as marshal from "./marshal"
 import {Collection} from "./collection.model"
 import {Attribute} from "./_attribute"
+import {File} from "./_file"
 
 @Entity_()
 export class Token {
@@ -36,4 +37,7 @@ export class Token {
 
     @Column_("jsonb", {transformer: {to: obj => obj == null ? undefined : obj.map((val: any) => val.toJSON()), from: obj => obj == null ? undefined : marshal.fromList(obj, val => new Attribute(undefined, marshal.nonNull(val)))}, nullable: true})
     attributes!: (Attribute)[] | undefined | null
+
+    @Column_("jsonb", {transformer: {to: obj => obj == null ? undefined : obj.toJSON(), from: obj => obj == null ? undefined : new File(undefined, obj)}, nullable: true})
+    file!: File | undefined | null
 }

@@ -1,5 +1,6 @@
 enum ListEventStatus {
   LISTING
+  AUCTIONING
   SOLD
   CANCELED
 }
@@ -13,6 +14,14 @@ enum CollectionCategory {
   CAR
 }
 
+type AuctionData {
+  minBid: BigInt!
+  startTime: DateTime!
+  endTime: DateTime!
+  winner: String
+  finalPrice: BigInt
+}
+
 type ListEvent @entity {
   id: ID!
   collection: Collection! @index
@@ -23,6 +32,29 @@ type ListEvent @entity {
   timestamp: DateTime!
   txHash: String!
   status: ListEventStatus!
+  auctionData: AuctionData
+}
+
+type BidEvent @entity {
+  id: ID!
+  listEvent: ListEvent!
+  price: BigInt!
+  bidder: String!
+  timestamp: DateTime!
+  txHash: String!
+}
+
+type OfferEvent @entity {
+  id: ID!
+  collection: Collection! @index
+  token: Token! @index
+  payToken: PaymentToken!
+  price: BigInt!
+  offerer: String!
+  owner: String!
+  timestamp: DateTime!
+  accepted: Boolean
+  txHash: String!
 }
 
 type Collection @entity {
@@ -42,11 +74,17 @@ type Token @entity {
   uri: String
   image: String
   attributes: [Attribute!]
+  file: File
 }
 
 type Attribute {
   traitType: String!
   value: String!
+}
+
+type File {
+  path: String!
+  mime: String!
 }
 
 type PaymentToken @entity {

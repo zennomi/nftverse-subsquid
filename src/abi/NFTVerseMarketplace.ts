@@ -14,6 +14,9 @@ export const events = {
     BoughtNFT: new LogEvent<([nft: string, tokenId: bigint, payToken: string, price: bigint, seller: string, buyer: string] & {nft: string, tokenId: bigint, payToken: string, price: bigint, seller: string, buyer: string})>(
         abi, '0x72136ea02664c7ef94168318a5622b2f8cc9e3a3f2bfd6fbdff378aa303e4beb'
     ),
+    CanceledAuction: new LogEvent<([nft: string, tokenId: bigint, creator: string] & {nft: string, tokenId: bigint, creator: string})>(
+        abi, '0x966762597e38e0a3acfb9033439bac11dd48b3e2f2f8d1a42e2d37db3d3c738e'
+    ),
     CanceledListedNFT: new LogEvent<([nft: string, tokenId: bigint, seller: string] & {nft: string, tokenId: bigint, seller: string})>(
         abi, '0x1680ded6dd194832c554c86e7696ff97f6081af4b8e03f2f8c1dc7b6869b41dd'
     ),
@@ -59,14 +62,14 @@ export const functions = {
     buyNFT: new Func<[_nft: string, _tokenId: bigint, _payToken: string, _price: bigint], {_nft: string, _tokenId: bigint, _payToken: string, _price: bigint}, []>(
         abi, '0xf01ade78'
     ),
-    buyNFTByETH: new Func<[_nfts: Array<string>, _tokenIds: Array<bigint>, _prices: Array<bigint>], {_nfts: Array<string>, _tokenIds: Array<bigint>, _prices: Array<bigint>}, []>(
-        abi, '0x9cc64834'
+    buyNFTByETH: new Func<[_nft: string, _tokenId: bigint], {_nft: string, _tokenId: bigint}, []>(
+        abi, '0xbadae5b5'
     ),
     buyNFTs: new Func<[_nfts: Array<string>, _tokenIds: Array<bigint>, _payTokens: Array<string>, _prices: Array<bigint>], {_nfts: Array<string>, _tokenIds: Array<bigint>, _payTokens: Array<string>, _prices: Array<bigint>}, []>(
         abi, '0x6840fa19'
     ),
-    buyNFTsByETH: new Func<[_nft: string, _tokenId: bigint], {_nft: string, _tokenId: bigint}, []>(
-        abi, '0x5d6624a1'
+    buyNFTsByETH: new Func<[_nfts: Array<string>, _tokenIds: Array<bigint>, _prices: Array<bigint>], {_nfts: Array<string>, _tokenIds: Array<bigint>, _prices: Array<bigint>}, []>(
+        abi, '0x975ff6df'
     ),
     calculatePlatformFee: new Func<[_price: bigint], {_price: bigint}, bigint>(
         abi, '0x0cbab4f7'

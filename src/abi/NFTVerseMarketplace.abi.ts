@@ -88,6 +88,28 @@ export const ABI_JSON = [
     {
         "type": "event",
         "anonymous": false,
+        "name": "CanceledAuction",
+        "inputs": [
+            {
+                "type": "address",
+                "name": "nft",
+                "indexed": true
+            },
+            {
+                "type": "uint256",
+                "name": "tokenId",
+                "indexed": true
+            },
+            {
+                "type": "address",
+                "name": "creator",
+                "indexed": true
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "anonymous": false,
         "name": "CanceledListedNFT",
         "inputs": [
             {
@@ -454,16 +476,12 @@ export const ABI_JSON = [
         "payable": true,
         "inputs": [
             {
-                "type": "address[]",
-                "name": "_nfts"
+                "type": "address",
+                "name": "_nft"
             },
             {
-                "type": "uint256[]",
-                "name": "_tokenIds"
-            },
-            {
-                "type": "uint256[]",
-                "name": "_prices"
+                "type": "uint256",
+                "name": "_tokenId"
             }
         ],
         "outputs": []
@@ -501,12 +519,16 @@ export const ABI_JSON = [
         "payable": true,
         "inputs": [
             {
-                "type": "address",
-                "name": "_nft"
+                "type": "address[]",
+                "name": "_nfts"
             },
             {
-                "type": "uint256",
-                "name": "_tokenId"
+                "type": "uint256[]",
+                "name": "_tokenIds"
+            },
+            {
+                "type": "uint256[]",
+                "name": "_prices"
             }
         ],
         "outputs": []

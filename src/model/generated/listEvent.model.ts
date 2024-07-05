@@ -1,8 +1,10 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, ManyToOne as ManyToOne_, Index as Index_, BigIntColumn as BigIntColumn_, StringColumn as StringColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
+import * as marshal from "./marshal"
 import {Collection} from "./collection.model"
 import {Token} from "./token.model"
 import {PaymentToken} from "./paymentToken.model"
 import {ListEventStatus} from "./_listEventStatus"
+import {AuctionData} from "./_auctionData"
 
 @Entity_()
 export class ListEvent {
@@ -37,6 +39,9 @@ export class ListEvent {
     @StringColumn_({nullable: false})
     txHash!: string
 
-    @Column_("varchar", {length: 8, nullable: false})
+    @Column_("varchar", {length: 10, nullable: false})
     status!: ListEventStatus
+
+    @Column_("jsonb", {transformer: {to: obj => obj == null ? undefined : obj.toJSON(), from: obj => obj == null ? undefined : new AuctionData(undefined, obj)}, nullable: true})
+    auctionData!: AuctionData | undefined | null
 }
