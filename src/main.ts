@@ -51,7 +51,7 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                     timestamp: new Date(block.header.timestamp),
                     txHash: log.transactionHash,
                     status: ListEventStatus.AUCTIONING,
-                    auctionData: new AuctionData({ minBid: event.minBid, endTime: new Date(Number(event.endTime) * 1000), startTime: new Date(Number(event.endTime) * 1000) })
+                    auctionData: new AuctionData({ minBid: event.minBid, endTime: new Date(Number(event.endTime) * 1000), startTime: new Date(Number(event.startTime) * 1000) })
                 }))
             } else if (log.topics[0] === nftVerseMarketplace.events.BoughtNFT.topic) {
                 const event = nftVerseMarketplace.events.BoughtNFT.decode(log)
