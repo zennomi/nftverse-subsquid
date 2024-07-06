@@ -4,15 +4,50 @@ import { Context, processor } from './processor'
 import * as nftVerseMarketplace from "./abi/NFTVerseMarketplace"
 import * as erc20 from "./abi/ERC20"
 import * as erc721 from "./abi/ERC721"
-import { In } from 'typeorm'
+import { IsNull } from 'typeorm'
 import { TokenMetadata, fetchOpenseaTokenMetadata, fetchTokenMetadata, proxyFile } from './metadata'
 
 processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
     const listEvents = new Map<string, ListEvent>()
-    const bidEvents: BidEvent[] = []
-    const offerEvents = new Map<string, OfferEvent>()
-    const collectionIds = new Set<string>()
-    const tokenIds = new Set<string>()
+
+    const collectionMap = new Map<string, Collection>()
+    const tokenMap = new Map<string, Token>()
+
+    async function getOrFetchCollection(collectionId: string): Promise<Collection> {
+        let collection = collectionMap.get(collectionId)
+        if (collection) return collection
+        collection = await ctx.store.get(Collection, collectionId);
+
+        if (!collection) {
+            collection = await fetchCollection(ctx, collectionId)
+            await ctx.store.insert(collection)
+        }
+        collectionMap.set(collectionId, collection)
+        return collection
+    }
+
+    async function getOrFetchToken(id: string): Promise<Token> {
+        const [collectionId, tokenId] = id.split("-")
+        const collection = await getOrFetchCollection(collectionId)
+        let token = tokenMap.get(id)
+        if (token) return token;
+        token = await ctx.store.get(Token, id);
+
+        if (!token) {
+            token = new Token({
+                id: id,
+                collection,
+                tokenId: BigInt(tokenId),
+            })
+            const metadata = await fetchToken(ctx, collectionId, BigInt(tokenId))
+            if (metadata) {
+                Object.assign(token, metadata)
+            }
+            await ctx.store.insert(token)
+        }
+        tokenMap.set(id, token)
+        return token
+    }
 
     for (const block of ctx.blocks) {
         for (const log of block.logs) {
@@ -23,10 +58,9 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                 await ctx.store.insert(paymentToken)
             } else if (log.topics[0] === nftVerseMarketplace.events.ListedNFT.topic) {
                 const event = nftVerseMarketplace.events.ListedNFT.decode(log)
-                collectionIds.add(event.nft)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
-                tokenIds.add(tokenId)
-                listEvents.set(tokenId, new ListEvent({
+                await getOrFetchToken(tokenId)
+                await ctx.store.insert(new ListEvent({
                     id: log.id,
                     collection: new Collection({ id: event.nft }),
                     token: new Token({ id: tokenId }),
@@ -39,10 +73,10 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                 }))
             } else if (log.topics[0] === nftVerseMarketplace.events.CreatedAuction.topic) {
                 const event = nftVerseMarketplace.events.CreatedAuction.decode(log)
-                collectionIds.add(event.nft)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
-                tokenIds.add(tokenId)
-                listEvents.set(tokenId, new ListEvent({
+                await getOrFetchToken(tokenId)
+
+                await ctx.store.insert(new ListEvent({
                     id: log.id,
                     collection: new Collection({ id: event.nft }),
                     token: new Token({ id: tokenId }),
@@ -57,32 +91,26 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
             } else if (log.topics[0] === nftVerseMarketplace.events.BoughtNFT.topic) {
                 const event = nftVerseMarketplace.events.BoughtNFT.decode(log)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
-                let listEvent = listEvents.get(tokenId)
-                if (!listEvent) {
-                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
-                }
+                let listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
+
                 listEvent.status = ListEventStatus.SOLD
-                listEvents.set(tokenId, listEvent)
+
+                await ctx.store.save(listEvent)
             } else if (log.topics[0] === nftVerseMarketplace.events.CanceledListedNFT.topic) {
                 const event = nftVerseMarketplace.events.CanceledListedNFT.decode(log)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
-                let listEvent = listEvents.get(tokenId)
-                if (!listEvent) {
-                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
-                }
+                let listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
                 listEvent.status = ListEventStatus.CANCELED
-                listEvents.set(tokenId, listEvent)
+
+                await ctx.store.save(listEvent)
             } else if (log.topics[0] === nftVerseMarketplace.events.PlacedBid.topic) {
                 const event = nftVerseMarketplace.events.PlacedBid.decode(log)
-                collectionIds.add(event.nft)
-                const tokenId = `${event.nft}-${event.tokenId.toString()}`
-                tokenIds.add(tokenId)
 
-                let listEvent = listEvents.get(tokenId)
-                if (!listEvent) {
-                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.AUCTIONING }, order: { timestamp: -1 } })
-                }
-                bidEvents.push(new BidEvent({
+                const tokenId = `${event.nft}-${event.tokenId.toString()}`
+
+                let listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.AUCTIONING }, order: { timestamp: -1 } })
+
+                await ctx.store.insert(new BidEvent({
                     id: log.id,
                     listEvent,
                     price: event.bidPrice,
@@ -91,27 +119,26 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                     txHash: log.transactionHash,
                 }))
                 listEvent.price = event.bidPrice
-                listEvents.set(tokenId, listEvent)
+
+                await ctx.store.save(listEvent)
             } else if (log.topics[0] === nftVerseMarketplace.events.CanceledAuction.topic) {
                 const event = nftVerseMarketplace.events.CanceledAuction.decode(log)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
-                let listEvent = listEvents.get(tokenId)
-                if (!listEvent) {
-                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.AUCTIONING }, order: { timestamp: -1 } })
-                }
+                let listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.AUCTIONING }, order: { timestamp: -1 } })
+
                 listEvent.status = ListEventStatus.CANCELED
-                listEvents.set(tokenId, listEvent)
+
+                await ctx.store.save(listEvent)
             } else if (log.topics[0] === nftVerseMarketplace.events.ResultedAuction.topic) {
                 const event = nftVerseMarketplace.events.ResultedAuction.decode(log)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
-                let listEvent = listEvents.get(tokenId)
-                if (!listEvent) {
-                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.AUCTIONING }, order: { timestamp: -1 } })
-                }
+                let listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.AUCTIONING }, order: { timestamp: -1 } })
+
                 listEvent.status = ListEventStatus.SOLD
                 listEvent.buyer = event.winner
                 listEvent.price = event.price
-                listEvents.set(tokenId, listEvent)
+
+                await ctx.store.save(listEvent)
             } else if (log.topics[0] === nftVerseMarketplace.events.OfferredNFT.topic) {
                 const event = nftVerseMarketplace.events.OfferredNFT.decode(log)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
@@ -121,7 +148,8 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                 }
                 const offerer = event.offerer
                 let offerId = `${tokenId}-${offerer}`
-                let offerEvent = new OfferEvent({
+
+                await ctx.store.insert(new OfferEvent({
                     id: log.id,
                     accepted: null,
                     listEvent,
@@ -129,85 +157,38 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                     price: event.offerPrice,
                     timestamp: new Date(block.header.timestamp),
                     txHash: log.transactionHash,
-                })
-                offerEvents.set(offerId, offerEvent)
+                }))
             } else if (log.topics[0] === nftVerseMarketplace.events.AcceptedNFT.topic) {
                 const event = nftVerseMarketplace.events.AcceptedNFT.decode(log)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
-                let listEvent = listEvents.get(tokenId)
-                if (!listEvent) {
-                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
-                }
+                let listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
+
                 const offerer = event.offerer
                 let offerId = `${tokenId}-${offerer}`
-                let offerEvent = offerEvents.get(tokenId)
-                if (!offerEvent) {
-                    offerEvent = await ctx.store.findOneOrFail(OfferEvent, { where: { listEvent: { id: listEvent.id }, offerer, accepted: undefined }, order: { timestamp: -1 } })
-                }
+
+                let offerEvent = await ctx.store.findOneOrFail(OfferEvent, { where: { listEvent: { id: listEvent.id }, offerer, accepted: IsNull() }, order: { timestamp: -1 } })
+
                 offerEvent.accepted = true
                 listEvent.status = ListEventStatus.SOLD
                 listEvent.buyer = event.offerer
-                listEvents.set(tokenId, listEvent)
-                offerEvents.set(offerId, offerEvent)
+                await ctx.store.save(listEvent)
+                await ctx.store.save(offerEvent)
             } else if (log.topics[0] === nftVerseMarketplace.events.CanceledOfferredNFT.topic) {
                 const event = nftVerseMarketplace.events.CanceledOfferredNFT.decode(log)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
                 const offerer = event.offerer
                 let offerId = `${tokenId}-${offerer}`
-                let listEvent = listEvents.get(tokenId)
-                if (!listEvent) {
-                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
-                }
-                let offerEvent = offerEvents.get(tokenId)
-                if (!offerEvent) {
-                    offerEvent = await ctx.store.findOneOrFail(OfferEvent, { where: { listEvent: { id: listEvent.id }, offerer, accepted: undefined }, order: { timestamp: -1 } })
-                }
+
+                let listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
+
+                let offerEvent = await ctx.store.findOneOrFail(OfferEvent, { where: { listEvent: { id: listEvent.id }, offerer, accepted: IsNull() }, order: { timestamp: -1 } })
+
                 offerEvent.accepted = false
-                offerEvents.set(offerId, offerEvent)
+
+                await ctx.store.save(offerEvent)
             }
         }
     }
-
-    // new collection
-    const collections = new Map<string, Collection>((await ctx.store.findBy(Collection, { id: In([...collectionIds]) })).map((entity) => [entity.id, entity]))
-
-    const insertCollections = new Map<string, Collection>()
-    for (const collectionId of collectionIds) {
-        if (!collections.get(collectionId)) {
-            const newCollection = await fetchCollection(ctx, collectionId)
-            insertCollections.set(collectionId, newCollection)
-            collections.set(collectionId, newCollection)
-        }
-    }
-    await ctx.store.insert([...insertCollections.values()])
-
-    // new token
-    const tokens = new Map<string, Token>((await ctx.store.findBy(Token, { id: In([...tokenIds]) })).map((entity) => [entity.id, entity]))
-
-    const insertTokens = new Map<string, Token>()
-    for (const id of tokenIds) {
-        if (!tokens.get(id)) {
-            const [collectionId, tokenId] = id.split("-")
-            const newToken = new Token({
-                id: id,
-                collection: collections.get(collectionId)!,
-                tokenId: BigInt(tokenId),
-            })
-            const metadata = await fetchToken(ctx, collectionId, BigInt(tokenId))
-            if (metadata) {
-                Object.assign(newToken, metadata)
-            }
-            insertTokens.set(id, newToken)
-            tokens.set(id, newToken)
-        }
-    }
-
-    await ctx.store.insert([...insertTokens.values()])
-    // list events
-    // upsert batches of entities with batch-optimized ctx.store.save
-    await ctx.store.upsert([...listEvents.values()])
-    await ctx.store.upsert([...offerEvents.values()])
-    await ctx.store.upsert(bidEvents)
 })
 
 async function fetchCollection(ctx: Context, address: string) {
