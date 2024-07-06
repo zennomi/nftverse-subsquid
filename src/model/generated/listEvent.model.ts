@@ -44,4 +44,7 @@ export class ListEvent {
 
     @Column_("jsonb", {transformer: {to: obj => obj == null ? undefined : obj.toJSON(), from: obj => obj == null ? undefined : new AuctionData(undefined, obj)}, nullable: true})
     auctionData!: AuctionData | undefined | null
+
+    @StringColumn_({nullable: true})
+    buyer!: string | undefined | null
 }

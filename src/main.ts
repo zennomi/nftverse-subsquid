@@ -10,6 +10,7 @@ import { TokenMetadata, fetchOpenseaTokenMetadata, fetchTokenMetadata, proxyFile
 processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
     const listEvents = new Map<string, ListEvent>()
     const bidEvents: BidEvent[] = []
+    const offerEvents = new Map<string, OfferEvent>()
     const collectionIds = new Set<string>()
     const tokenIds = new Set<string>()
 
@@ -51,7 +52,7 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                     timestamp: new Date(block.header.timestamp),
                     txHash: log.transactionHash,
                     status: ListEventStatus.AUCTIONING,
-                    auctionData: new AuctionData({ minBid: event.minBid, endTime: new Date(Number(event.endTime) * 1000), startTime: new Date(Number(event.startTime) * 1000) })
+                    auctionData: new AuctionData({ minBid: event.minBid, endTime: new Date(Number(event.endTime) * 1000), startTime: new Date(Number(event.startTime) * 1000), startPrice: event.price })
                 }))
             } else if (log.topics[0] === nftVerseMarketplace.events.BoughtNFT.topic) {
                 const event = nftVerseMarketplace.events.BoughtNFT.decode(log)
@@ -89,6 +90,8 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                     timestamp: new Date(block.header.timestamp),
                     txHash: log.transactionHash,
                 }))
+                listEvent.price = event.bidPrice
+                listEvents.set(tokenId, listEvent)
             } else if (log.topics[0] === nftVerseMarketplace.events.CanceledAuction.topic) {
                 const event = nftVerseMarketplace.events.CanceledAuction.decode(log)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
@@ -106,10 +109,61 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                     listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.AUCTIONING }, order: { timestamp: -1 } })
                 }
                 listEvent.status = ListEventStatus.SOLD
-                if (listEvent.auctionData) {
-                    listEvent.auctionData = new AuctionData({ ...listEvent.auctionData, finalPrice: event.price, winner: event.winner })
-                }
+                listEvent.buyer = event.winner
+                listEvent.price = event.price
                 listEvents.set(tokenId, listEvent)
+            } else if (log.topics[0] === nftVerseMarketplace.events.OfferredNFT.topic) {
+                const event = nftVerseMarketplace.events.OfferredNFT.decode(log)
+                const tokenId = `${event.nft}-${event.tokenId.toString()}`
+                let listEvent = listEvents.get(tokenId)
+                if (!listEvent) {
+                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
+                }
+                const offerer = event.offerer
+                let offerId = `${tokenId}-${offerer}`
+                let offerEvent = new OfferEvent({
+                    id: log.id,
+                    accepted: null,
+                    listEvent,
+                    offerer,
+                    price: event.offerPrice,
+                    timestamp: new Date(block.header.timestamp),
+                    txHash: log.transactionHash,
+                })
+                offerEvents.set(offerId, offerEvent)
+            } else if (log.topics[0] === nftVerseMarketplace.events.AcceptedNFT.topic) {
+                const event = nftVerseMarketplace.events.AcceptedNFT.decode(log)
+                const tokenId = `${event.nft}-${event.tokenId.toString()}`
+                let listEvent = listEvents.get(tokenId)
+                if (!listEvent) {
+                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
+                }
+                const offerer = event.offerer
+                let offerId = `${tokenId}-${offerer}`
+                let offerEvent = offerEvents.get(tokenId)
+                if (!offerEvent) {
+                    offerEvent = await ctx.store.findOneOrFail(OfferEvent, { where: { listEvent: { id: listEvent.id }, offerer, accepted: undefined }, order: { timestamp: -1 } })
+                }
+                offerEvent.accepted = true
+                listEvent.status = ListEventStatus.SOLD
+                listEvent.buyer = event.offerer
+                listEvents.set(tokenId, listEvent)
+                offerEvents.set(offerId, offerEvent)
+            } else if (log.topics[0] === nftVerseMarketplace.events.CanceledOfferredNFT.topic) {
+                const event = nftVerseMarketplace.events.CanceledOfferredNFT.decode(log)
+                const tokenId = `${event.nft}-${event.tokenId.toString()}`
+                const offerer = event.offerer
+                let offerId = `${tokenId}-${offerer}`
+                let listEvent = listEvents.get(tokenId)
+                if (!listEvent) {
+                    listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
+                }
+                let offerEvent = offerEvents.get(tokenId)
+                if (!offerEvent) {
+                    offerEvent = await ctx.store.findOneOrFail(OfferEvent, { where: { listEvent: { id: listEvent.id }, offerer, accepted: undefined }, order: { timestamp: -1 } })
+                }
+                offerEvent.accepted = false
+                offerEvents.set(offerId, offerEvent)
             }
         }
     }
@@ -152,6 +206,7 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
     // list events
     // upsert batches of entities with batch-optimized ctx.store.save
     await ctx.store.upsert([...listEvents.values()])
+    await ctx.store.upsert([...offerEvents.values()])
     await ctx.store.upsert(bidEvents)
 })
 

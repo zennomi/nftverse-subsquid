@@ -18,8 +18,7 @@ type AuctionData {
   minBid: BigInt!
   startTime: DateTime!
   endTime: DateTime!
-  winner: String
-  finalPrice: BigInt
+  startPrice: BigInt!
 }
 
 type ListEvent @entity {
@@ -33,6 +32,7 @@ type ListEvent @entity {
   txHash: String!
   status: ListEventStatus!
   auctionData: AuctionData
+  buyer: String
 }
 
 type BidEvent @entity {
@@ -46,12 +46,9 @@ type BidEvent @entity {
 
 type OfferEvent @entity {
   id: ID!
-  collection: Collection! @index
-  token: Token! @index
-  payToken: PaymentToken!
+  listEvent: ListEvent!
   price: BigInt!
   offerer: String!
-  owner: String!
   timestamp: DateTime!
   accepted: Boolean
   txHash: String!
