@@ -147,7 +147,11 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                     listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
                 }
                 const offerer = event.offerer
-                let offerId = `${tokenId}-${offerer}`
+
+                let offerEvent = await ctx.store.findOne(OfferEvent, { where: { listEvent: { id: listEvent.id }, offerer, accepted: IsNull() }, order: { timestamp: -1 } })
+                if (offerEvent) {
+                    await ctx.store.remove(offerEvent)
+                }
 
                 await ctx.store.insert(new OfferEvent({
                     id: log.id,
@@ -164,7 +168,6 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                 let listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
 
                 const offerer = event.offerer
-                let offerId = `${tokenId}-${offerer}`
 
                 let offerEvent = await ctx.store.findOneOrFail(OfferEvent, { where: { listEvent: { id: listEvent.id }, offerer, accepted: IsNull() }, order: { timestamp: -1 } })
 
@@ -177,7 +180,6 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
                 const event = nftVerseMarketplace.events.CanceledOfferredNFT.decode(log)
                 const tokenId = `${event.nft}-${event.tokenId.toString()}`
                 const offerer = event.offerer
-                let offerId = `${tokenId}-${offerer}`
 
                 let listEvent = await ctx.store.findOneOrFail(ListEvent, { where: { token: { id: tokenId }, status: ListEventStatus.LISTING }, order: { timestamp: -1 } })
 
