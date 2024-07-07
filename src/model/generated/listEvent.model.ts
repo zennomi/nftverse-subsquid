@@ -1,10 +1,11 @@
-import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, ManyToOne as ManyToOne_, Index as Index_, BigIntColumn as BigIntColumn_, StringColumn as StringColumn_, DateTimeColumn as DateTimeColumn_} from "@subsquid/typeorm-store"
+import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, ManyToOne as ManyToOne_, Index as Index_, BigIntColumn as BigIntColumn_, StringColumn as StringColumn_, DateTimeColumn as DateTimeColumn_, OneToMany as OneToMany_} from "@subsquid/typeorm-store"
 import * as marshal from "./marshal"
 import {Collection} from "./collection.model"
 import {Token} from "./token.model"
 import {PaymentToken} from "./paymentToken.model"
 import {ListEventStatus} from "./_listEventStatus"
 import {AuctionData} from "./_auctionData"
+import {BidEvent} from "./bidEvent.model"
 
 @Entity_()
 export class ListEvent {
@@ -47,4 +48,7 @@ export class ListEvent {
 
     @StringColumn_({nullable: true})
     buyer!: string | undefined | null
+
+    @OneToMany_(() => BidEvent, e => e.listEvent)
+    bidderEvents!: BidEvent[]
 }

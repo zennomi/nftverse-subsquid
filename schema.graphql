@@ -33,6 +33,7 @@ type ListEvent @entity {
   status: ListEventStatus!
   auctionData: AuctionData
   buyer: String
+  bidderEvents: [BidEvent!] @derivedFrom(field: "listEvent")
 }
 
 type BidEvent @entity {
